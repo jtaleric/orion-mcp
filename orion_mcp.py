@@ -6,6 +6,7 @@ the cloud-bulldozer/orion library.
 """
 
 import asyncio
+import os
 from typing import Annotated
 from pydantic import Field
 
@@ -56,12 +57,14 @@ def get_orion_configs() -> list[str]:
     return orion_configs(ORION_CONFIGS)
 
 @mcp.tool()
-async def get_orion_metrics() -> str:
+async def get_orion_metrics() -> dict:
     """
     Provides the metrics for Orion analysis.
 
     Returns:
-        The metrics names that Orion uses to analyze the data.
+        dictionary of metrics names that Orion uses to analyze the data.
+        the key is the config the metric is associated with
+        the value is a list of all the metric names that are available for that config
     """
     return await orion_metrics(ORION_CONFIGS)
 
@@ -133,7 +136,7 @@ async def openshift_report_on(
 async def has_openshift_regressed(
     version: Annotated[str, Field(description="Version of OpenShift to look into")] = "4.19",
     lookback: Annotated[str, Field(description="Number of days to lookback")] = "15",
-) -> bool | str:
+) -> str:
     """
     Runs a performance regression analysis against the OpenShift version using Orion.
 
@@ -145,7 +148,8 @@ async def has_openshift_regressed(
         lookback: The number of days to look back for performance data. Defaults to 15 days.
 
     Returns:
-        Returns true if there is a regression and false if there is no regression found.
+        Returns string stating if there is a regression and in which config it was found.
+                       If no regressions are found, returns "No regressions found".
     """
 
     for config in ORION_CONFIGS:
@@ -158,9 +162,9 @@ async def has_openshift_regressed(
         )
 
         if result.returncode != 0:
-            return result.stderr
+            return f"Regression found while running config: {config}"
 
-    return False
+    return "No regressions found"
 
 
 def main():
@@ -169,6 +173,10 @@ def main():
 
 
 if __name__ == "__main__":
+    if os.getenv("ES_SERVER") is None:
+        print("ES_SERVER environment variable is not set")
+        exit(1)
     TRANSPORT = "streamable-http"
     asyncio.run(mcp.run(transport=TRANSPORT))
     print("Running MCP server with transport:", TRANSPORT)
+

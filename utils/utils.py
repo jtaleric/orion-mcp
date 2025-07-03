@@ -245,11 +245,12 @@ async def csv_to_graph(csv_data: str) -> list[bytes]:
             f'{metric_name} Values\n(Workload: {file_path})',
             fontsize=16
         )
-        plt.xlabel('Measurement Index', fontsize=12)
-        plt.ylabel(f'{metric_name} Value', fontsize=12)
+        plt.xlabel('Measurement Index', fontsize=18)
+        plt.ylabel(f'{metric_name} Value', fontsize=18)
         plt.grid(True, linestyle='--', alpha=0.7)
-        plt.tick_params(axis='x', labelsize=10)
-        plt.tick_params(axis='y', labelsize=10)
+        plt.tick_params(axis='x', labelsize=12)
+        plt.tick_params(axis='y', labelsize=12)
+        plt.ylim(min(values)-min(values)*0.1, max(values)+max(values)*0.1)
 
         # Add a tight layout to prevent labels from overlapping
         plt.tight_layout()
@@ -270,7 +271,7 @@ async def csv_to_graph(csv_data: str) -> list[bytes]:
     return imgs
 
 
-async def summarize_result(result: subprocess.CompletedProcess, isolate: str = None) -> dict:
+async def summarize_result(result: subprocess.CompletedProcess, isolate: str = None) -> dict | str:
     """
     Summarize the Orion result into a dictionary.
 
@@ -319,27 +320,33 @@ def get_data_source() -> str:
     return os.environ.get("ES_SERVER") 
 
 
-async def orion_metrics(config_list: list) -> list:
+async def orion_metrics(config_list: list) -> dict | str:
     """
-    Provide the namespaces for Orion analysis.
+    Provide the metrics for Orion analysis.
     Args:
         config_list: List of Orion configuration files.
     Returns:
-        A list containing the namespaces for Orion analysis.
+        A dictionary containing the metrics for Orion analysis.
+        the key is the config the metric is associated with
+        the value is a list of all the metric names that are available for that config
     """
-    metrics = []
+    metrics = {} 
     for config in config_list:
+        metrics[config] = []
         result = await run_orion(
-            lookback="1",
+            lookback="2",
             config=config,
             data_source=get_data_source(),
             version="4.19"
         )
         try:
             sum_result = await summarize_result(result)
-            print(sum_result)
-            metrics.extend(list(sum_result.keys()))
+            print(f"Sum result: {sum_result}")
+            if isinstance(sum_result, dict):
+                metrics[config].append(list(sum_result.keys()))
+            else:
+                return f"Error processing result for {config}: {sum_result}"
         except (KeyError, ValueError, TypeError) as e:
-            print(f"Error processing result for {config}: {e}")
-    return list(set(metrics))
+            return f"Error processing result for {config}: {e}"
+    return metrics 
     
