@@ -271,6 +271,38 @@ async def csv_to_graph(csv_data: str) -> list[bytes]:
     return imgs
 
 
+def extract_json_block(log_text: str):
+    lines = log_text.strip().splitlines()
+
+    # Exit early if UUID is missing
+    for line in lines:
+        if "No UUID present for given metadata" in line:
+            print("❌ Error: No UUID present for given metadata. Exiting.")
+            sys.exit(1)
+
+    # Look for the JSON block start
+    json_start_index = None
+    for i, line in enumerate(lines):
+        if line.strip().startswith("="):
+            json_start_index = i + 1
+            break
+
+    if json_start_index is None:
+        print("❌ Error: JSON delimiter not found. Exiting.")
+        sys.exit(1)
+
+    json_text = "\n".join(lines[json_start_index:]).strip()
+
+    if not json_text:
+        print("❌ Error: JSON block is empty. Exiting.")
+        sys.exit(1)
+
+    try:
+        return json.loads(json_text)
+    except json.JSONDecodeError as e:
+        print(f"❌ Error: Failed to parse JSON: {e}")
+        sys.exit(1)
+
 async def summarize_result(result: subprocess.CompletedProcess, isolate: str = None) -> dict | str:
     """
     Summarize the Orion result into a dictionary.
@@ -282,11 +314,12 @@ async def summarize_result(result: subprocess.CompletedProcess, isolate: str = N
         A dictionary containing the summary of the Orion analysis.
     """
     summary = {}
+    print(result.stdout)
     try:
-        data = json.loads(result.stdout)
-        if len(data) == 0:
+        extracted_json = extract_json_block(result.stdout)
+        if len(extracted_json) == 0:
             return {}
-        for run in data:
+        for run in extracted_json:
             for metric_name, metric_data in run["metrics"].items():
                 summary["timestamp"] = run["timestamp"]
                 # Isolate specific metric if specified
@@ -334,7 +367,7 @@ async def orion_metrics(config_list: list) -> dict | str:
     for config in config_list:
         metrics[config] = []
         result = await run_orion(
-            lookback="2",
+            lookback="3",
             config=config,
             data_source=get_data_source(),
             version="4.19"
