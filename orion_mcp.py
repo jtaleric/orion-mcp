@@ -74,7 +74,7 @@ async def openshift_report_on(
     version: Annotated[str, Field(description="Version of OpenShift to look into")] = "4.19",
     lookback: Annotated[str, Field(description="Number of days to lookback")] = "15",
     metric: Annotated[str, Field(description="Metric to analyze")] = "containerCPU",
-    config: Annotated[str, Field(description="Config to analyze")] = "trt-external-payload-cluster-density.yaml",
+    config: Annotated[str, Field(description="Config to analyze")] = "cluster-density.yaml",
 ) -> types.ImageContent | types.TextContent:
     """
     Captures a performance analysis against the specified OpenShift version using Orion.
@@ -118,7 +118,7 @@ async def openshift_report_on(
 
     data = {}
     data[config] = {}
-    data[config] = await summarize_result(result,isolate=metric)
+    data[config] = await summarize_result(result, isolate=metric)
     results = [data]
     b64_imgs = await csv_to_graph(convert_results_to_csv(results))
     imgs = []
@@ -175,7 +175,8 @@ def main():
 if __name__ == "__main__":
     if os.getenv("ES_SERVER") is None:
         print("ES_SERVER environment variable is not set")
-        exit(1)
+        import sys
+        sys.exit(1)
     TRANSPORT = "streamable-http"
     asyncio.run(mcp.run(transport=TRANSPORT))
     print("Running MCP server with transport:", TRANSPORT)
