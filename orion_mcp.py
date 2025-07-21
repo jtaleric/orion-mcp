@@ -180,7 +180,7 @@ async def has_openshift_regressed(
         if result.returncode != 0:
             metrics = _extract_regression_metrics(result.stdout)
             if metrics:
-                return f"Regression found while running config: {config}, metrics: {', '.join(metrics)}"
+                return f"Change found while running config: {config}, metrics: {', '.join(metrics)}"
 
     return "No regressions found"
 
