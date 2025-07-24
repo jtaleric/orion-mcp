@@ -17,13 +17,12 @@ from mcp.server.fastmcp import FastMCP
 # Import utility functions from utils module
 from utils.utils import (
     run_orion,
-    convert_results_to_csv,
-    csv_to_graph,
     summarize_result,
     get_data_source,
     orion_metrics,
     orion_configs,
-    generate_correlation_plot
+    generate_correlation_plot,
+    generate_multi_line_plot
 )
 
 mcp = FastMCP(name="orion-mcp",
@@ -31,13 +30,17 @@ mcp = FastMCP(name="orion-mcp",
               port=3030,
               log_level='INFO')
 
+ORION_CONFIGS_PATH = "/orion/examples/"
 ORION_CONFIGS = [
-    "/orion/examples/trt-external-payload-cluster-density.yaml",
-    "/orion/examples/trt-external-payload-node-density.yaml",
-    "/orion/examples/trt-external-payload-node-density-cni.yaml",
-    "/orion/examples/trt-external-payload-crd-scale.yaml",
-    "/orion/examples/small-scale-udn-l3.yaml",
+    "metal-perfscale-cpt-virt-udn-density.yaml",
+    "trt-external-payload-cluster-density.yaml",
+    "trt-external-payload-node-density.yaml",
+    "trt-external-payload-node-density-cni.yaml",
+    "trt-external-payload-crd-scale.yaml",
+    "small-scale-udn-l3.yaml",
+    "med-scale-udn-l3.yaml",
 ]
+FULL_ORION_CONFIG_PATHS = [os.path.join(ORION_CONFIGS_PATH, config) for config in ORION_CONFIGS]
 
 @mcp.resource("orion-mcp://get_data_source")
 def get_data_source_resource() -> str:
@@ -60,27 +63,34 @@ def get_orion_configs() -> list[str]:
     return orion_configs(ORION_CONFIGS)
 
 @mcp.tool()
-async def get_orion_metrics() -> dict:
-    """
-    Provides the metrics for Orion analysis.
+async def get_orion_metrics(
+    config: Annotated[str, Field(description="Orion configuration file name (e.g. 'small-scale-udn-l3.yaml')")] = "small-scale-udn-l3.yaml",
+) -> dict:
+    """Return the list of metrics available for a specific Orion *config*.
+
+    Args:
+        config: **Filename** of the Orion configuration to query (not the full path).
 
     Returns:
-        dictionary of metrics names that Orion uses to analyze the data.
-        the key is the config the metric is associated with
-        the value is a list of all the metric names that are available for that config
+        A dictionary where the key is the *config* (full path) and the value is a
+        list of metric names available for that configuration.
     """
-    result = await orion_metrics(ORION_CONFIGS)
+
+    # Query only the requested config
+    result = await orion_metrics([ORION_CONFIGS_PATH + config])
+
     if isinstance(result, str):
         return {"error": f"Failed to fetch Orion metrics: {result}"}
+
     return result
 
 
 @mcp.tool()
 async def openshift_report_on(
-    version: Annotated[str, Field(description="Version of OpenShift to look into")] = "4.19",
+    versions: Annotated[str, Field(description="Comma-separated list of OpenShift versions e.g. '4.19,4.20'")] = "4.19",
     lookback: Annotated[str, Field(description="Number of days to lookback")] = "15",
     metric: Annotated[str, Field(description="Metric to analyze")] = "podReadyLatency_P99",
-    config: Annotated[str, Field(description="Config to analyze")] = "trt-external-payload-cluster-density.yaml",
+    config: Annotated[str, Field(description="Config to analyze")] = "small-scale-udn-l3.yaml",
 ) -> types.ImageContent | types.TextContent:
     """
     Captures a performance analysis against the specified OpenShift version using Orion.
@@ -89,7 +99,7 @@ async def openshift_report_on(
     configuration file to detect any performance regressions.
 
     Args:
-        version: Openshift version to look into.
+        version: Comma-separated list of OpenShift versions to analyze.
         lookback: The number of days to look back for performance data. Defaults to 15 days.
         metric: The metric to analyze. Defaults to CPU.
         config: The config to analyze. Defaults to trt-external-payload-cluster-density.yaml.
@@ -98,49 +108,47 @@ async def openshift_report_on(
         Returns an image showing the performance overtime.
     """
 
-    path="/orion/examples/"
+    # Parse versions into list
+    if isinstance(versions, str):
+        version_list = [v.strip() for v in versions.split(',') if v.strip()]
+    else:
+        version_list = list(versions)
 
-    result = await run_orion(
-        lookback=lookback,
-        config=path + config,
-        data_source=get_data_source(),
-        version=version
-    )
+    series: dict[str, list[float]] = {}
 
-    # Log the full result for debugging
-    print(f"Orion return code: {result.returncode}")
-    print(f"Orion stdout: {result.stdout}")
-    print(f"Orion stderr: {result.stderr}")
-
-    if result.returncode != 0:
-        sum_result = await summarize_result(result, isolate=metric)
-        error_results = [{"error": sum_result}]
-        b64_imgs = await csv_to_graph(convert_results_to_csv(error_results))
-        imgs = []
-        for img in b64_imgs:
-            if img is None:
-                continue
-            b64_img = img.decode('utf-8')
-            imgs.append(
-                types.ImageContent(type="image", data=b64_img, mimeType="image/jpeg")
-            )
-        return imgs[0]
-
-
-    data = {}
-    data[config] = {}
-    data[config] = await summarize_result(result, isolate=metric)
-    results = [data]
-    b64_imgs = await csv_to_graph(convert_results_to_csv(results))
-    imgs = []
-    for img in b64_imgs:
-        if img is None:
-            continue
-        b64_img = img.decode('utf-8')
-        imgs.append(
-            types.ImageContent(type="image", data=b64_img, mimeType="image/jpeg")
+    for ver in version_list:
+        result = await run_orion(
+            lookback=lookback,
+            config=ORION_CONFIGS_PATH + config,
+            data_source=get_data_source(),
+            version=ver,
         )
-    return imgs[0]
+
+        sum_result = await summarize_result(result, isolate=metric)
+
+        # Ensure we have the expected structure before indexing
+        if not isinstance(sum_result, dict) or metric not in sum_result:
+            return types.TextContent(type="text", text=f"No data for version {ver}: {sum_result}")
+
+        raw_values = sum_result[metric].get("value", [])  # type: ignore[assignment]
+        if not isinstance(raw_values, list):
+            return types.TextContent(type="text", text=f"Unexpected data format for version {ver}")
+
+        # Remove None values to keep the plot continuous
+        values = [v for v in raw_values if v is not None]
+        if not values:
+            return types.TextContent(type="text", text=f"All values are None for version {ver}")
+
+        series[ver] = values
+        print(f"series: {series}")
+
+    # Generate multi-line plot
+    try:
+        img_b64 = generate_multi_line_plot(series, metric, title_prefix=f"{config}: ")
+    except ValueError as e:
+        return types.TextContent(type="text", text=str(e))
+
+    return types.ImageContent(type="image", data=img_b64.decode("utf-8"), mimeType="image/jpeg")
 
 
 def _extract_regression_metrics(stdout: str) -> list[str]:
@@ -153,7 +161,10 @@ def _extract_regression_metrics(stdout: str) -> list[str]:
         for metric in dat["metrics"]:
             percentage_change = dat["metrics"][metric]["percentage_change"]
             if percentage_change > 0:
-                metrics.append(f"{metric} increased by {percentage_change}%")
+                metrics.append(f"{metric} increased by {percentage_change:.2f}%")
+            elif percentage_change < 0:
+                metrics.append(f"{metric} decreased by {abs(percentage_change):.2f}%")
+
     return metrics
 
 
@@ -177,21 +188,29 @@ async def has_openshift_regressed(
                        If no regressions are found, returns "No regressions found".
     """
 
-    for config in ORION_CONFIGS:
+    changepoints = []
+
+    for full_config_path in FULL_ORION_CONFIG_PATHS:
         # Execute the command as a subprocess
         result = await run_orion(
             lookback=lookback,
-            config=config,
+            config=full_config_path,
             data_source=get_data_source(),
             version=version
         )
 
-        if result.returncode != 0:
+        if result.returncode not in (0, 3):
             metrics = _extract_regression_metrics(result.stdout)
             if metrics:
-                return f"Change found while running config: {config}, metrics: {', '.join(metrics)}"
+                changepoints.append(
+                    f"⚠️ Change detected in configuration: '{full_config_path}'\n"
+                    "Affected metrics:\n" +
+                    "\n".join(f"  - {metric}" for metric in metrics)
+                )
 
-    return "No regressions found"
+    if changepoints:
+        return "\n\n".join(changepoints)
+    return "No changepoints found"
 
 
 # Correlation tool
@@ -213,20 +232,13 @@ async def metrics_correlation(
     falls back to returning a textual error message.
     """
 
-    path = "/orion/examples/"
-
     # Run Orion to gather data
     result = await run_orion(
         lookback=lookback,
-        config=path + config,
+        config=ORION_CONFIGS_PATH + config,
         data_source=get_data_source(),
         version=version,
     )
-
-    # Handle execution errors early
-    if result.returncode != 0:
-        summary_err = await summarize_result(result)
-        return types.TextContent(type="text", text=f"Failed to execute Orion: {summary_err}")
 
     summary = await summarize_result(result)
 

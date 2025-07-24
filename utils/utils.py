@@ -5,18 +5,20 @@ This module contains helper functions for running Orion analysis,
 converting data formats, and generating visualizations.
 """
 
+import asyncio
 import base64
 import io
-import os
-import subprocess
 import json
+import os
 import shutil
-import asyncio
+import subprocess
+from typing import Optional
+
 import matplotlib.pyplot as plt
 import numpy as np
 
 
-async def run_command_async(command: list[str] | str, env: dict = None, shell: bool = False) -> subprocess.CompletedProcess:
+async def run_command_async(command: list[str] | str, env: Optional[dict] = None, shell: bool = False) -> subprocess.CompletedProcess:
     """
     Run a command line tool asynchronously and return a CompletedProcess-like result.
     Args:
@@ -125,154 +127,14 @@ async def run_orion(
         "es_benchmark_index": "ripsaw-kube-burner-*"
     }
     result = await run_command_async(command, env=env)
+    # Log the full result for debugging
+    print(f"Orion return code: {result.returncode}")
+    print(f"Orion stdout: {result.stdout}")
+    print(f"Orion stderr: {result.stderr}")
     return result
 
 
-def convert_results_to_csv(results: list) -> str:
-    """
-    Convert the results of the Orion analysis into a CSV format.
-
-    Args:
-        results: The list of results from the Orion analysis.
-
-    Returns:
-        A string containing the CSV representation of the results.
-    """
-    csv_lines = []
-    for result in results:
-        for config, data in result.items():
-            if not data:
-                continue
-            for metric, values in data.items():
-                if metric == "timestamp":
-                    continue
-                csv_lines.append(f"{config},{metric},{','.join(map(str, values['value']))}")
-    return "\n".join(csv_lines)
-
-
-async def csv_to_graph(csv_data: str) -> list[bytes]:
-    """
-    Convert CSV data into a graph representation.
-
-    Args:
-        csv_data: The CSV data to convert.
-
-    Returns:
-        List of base64 encoded graph images.
-    """
-
-    # Dictionary to store parsed data:
-    # Key: (file_path, metric_name) tuple
-    # Value: List of numerical data points
-    parsed_metrics_data = {}
-
-    # Group the data by workload and metric
-    grouped_data = {}
-    for line in csv_data.strip().split('\n'):
-        if not line.strip():
-            continue
-        parts = line.strip().split(',')
-        if len(parts) < 3:
-            continue
-        file_path = parts[0]
-        metric_name = parts[1]
-        value = parts[2:]
-
-        if file_path not in grouped_data:
-            grouped_data[file_path] = {}
-        if metric_name not in grouped_data[file_path]:
-            grouped_data[file_path][metric_name] = value
-
-    # Split the input string into individual lines
-    lines = csv_data.strip().split('\n')
-
-    for line_num, line in enumerate(lines):
-        if not line.strip():  # Skip empty lines
-            continue
-
-        parts = line.strip().split(',')
-        if len(parts) < 3:  # Ensure at least path, metric_name, and one value
-            print(f"Warning: Skipping malformed line {line_num + 1}: '{line}'. "
-                  f"Expected at least 3 comma-separated parts.")
-            continue
-
-        file_path = parts[0]
-        metric_name = parts[1]
-        raw_values = parts[2:]
-
-        # Convert raw_values to floats, handling 'None' values
-        numerical_values = []
-        for val_str in raw_values:
-            try:
-                # Convert 'None' string to actual None, then filter out
-                numerical_values.append(float(val_str) if val_str.lower() != 'none' else None)
-            except ValueError:
-                print(f"Warning: Could not convert '{val_str}' to a number in line {line_num + 1}. "
-                      f"Skipping this value.")
-                numerical_values.append(None)
-
-        # Filter out actual None values from the list before storing
-        numerical_values = [val for val in numerical_values if val is not None]
-
-        if not numerical_values:
-            print(f"Warning: No valid numerical data found for metric '{metric_name}' "
-                  f"in '{file_path}'. Skipping plot for this entry.")
-            continue
-
-        # Store the data using a tuple as key for unique identification
-        key = (file_path, metric_name)
-        parsed_metrics_data[key] = numerical_values
-
-    if not parsed_metrics_data:
-        print("No valid metric data found to generate graphs.")
-        return []
-
-    imgs = []
-
-    # Generate a line graph for each metric entry
-    for (file_path, metric_name), values in parsed_metrics_data.items():
-        plt.figure(figsize=(12, 7))  # Set a good figure size
-        # The X-axis will just be the index of the measurement
-        plt.plot(range(len(values)), values, marker='o', linestyle='-', color='skyblue', linewidth=2)
-
-        # Sanitize file_path for use in filename (replace slashes and dots with underscores)
-        # and limit length to avoid overly long filenames
-        sanitized_file_path = file_path.replace('/', '_').replace('.', '_').strip('_')
-        if len(sanitized_file_path) > 50:  # Limit length
-            sanitized_file_path = sanitized_file_path[-50:]  # Take last 50 chars
-
-        # Add labels and title
-        plt.title(
-            f'{metric_name} Values\n(Workload: {file_path})',
-            fontsize=16
-        )
-        plt.xlabel('Measurement Index', fontsize=18)
-        plt.ylabel(f'{metric_name} Value', fontsize=18)
-        plt.grid(True, linestyle='--', alpha=0.7)
-        plt.tick_params(axis='x', labelsize=12)
-        plt.tick_params(axis='y', labelsize=12)
-        plt.ylim(min(values)-min(values)*0.1, max(values)+max(values)*0.1)
-
-        # Add a tight layout to prevent labels from overlapping
-        plt.tight_layout()
-
-        # Save the plot
-        try:
-            img = io.BytesIO()
-            plt.savefig(img, format='png')
-            img.seek(0)
-            img_data = base64.b64encode(img.read())
-            imgs.append(img_data)
-        except Exception as e:
-            print(f"Error with graph : {e}")
-        plt.close()  # Close the figure to free up memory
-
-    # Add a small delay to prevent blocking
-    await asyncio.sleep(0.01)
-    return imgs
-
-
-async def summarize_result(result: subprocess.CompletedProcess, isolate: str = None) -> dict | str:
+async def summarize_result(result: subprocess.CompletedProcess, isolate: Optional[str] = None) -> dict | str:
     """
     Summarize the Orion result into a dictionary.
 
@@ -318,7 +180,10 @@ def get_data_source() -> str:
     Returns:
         The OpenSearch URL as a string.
     """
-    return os.environ.get("ES_SERVER") 
+    value = os.environ.get("ES_SERVER")
+    if value is None:
+        raise EnvironmentError("ES_SERVER environment variable is not set")
+    return value
 
 
 async def orion_metrics(config_list: list) -> dict | str:
@@ -335,7 +200,7 @@ async def orion_metrics(config_list: list) -> dict | str:
     for config in config_list:
         metrics[config] = []
         result = await run_orion(
-            lookback="2",
+            lookback="15", 
             config=config,
             data_source=get_data_source(),
             version="4.19"
@@ -349,6 +214,7 @@ async def orion_metrics(config_list: list) -> dict | str:
                 return f"Error processing result for {config}: {sum_result}"
         except (KeyError, ValueError, TypeError) as e:
             return f"Error processing result for {config}: {e}"
+
     return metrics 
     
 
@@ -364,9 +230,14 @@ def compute_correlation(values1: list[float], values2: list[float]) -> float:
 
     Returns:
         The Pearson correlation coefficient. Returns ``float('nan')`` if the
-        lists are of unequal length or contain fewer than two items.
+        lists are of unequal length, contain fewer than two items, or if
+        either array has zero variance (all identical values).
     """
     if len(values1) != len(values2) or len(values1) < 2:
+        return float("nan")
+
+    # Check for zero variance (all identical values)
+    if np.var(values1) == 0 or np.var(values2) == 0:
         return float("nan")
 
     # Use NumPy for a robust computation
@@ -410,4 +281,54 @@ def generate_correlation_plot(
     plt.close()
     buffer.seek(0)
     return base64.b64encode(buffer.read())
+ 
+# Multi-line plot helper
+def generate_multi_line_plot(
+    series_dict: dict[str, list[float]],
+    metric: str,
+    title_prefix: str = "",
+) -> bytes:
+    """Generate a multi-line plot where each key in *series_dict* becomes a
+    separate line.
+
+    Args:
+        series_dict: Mapping of *label* → list of numeric values.
+        metric: Metric name (used for y-axis label/title).
+        title_prefix: Optional string placed before the title.
+
+    Returns:
+        Base64-encoded PNG image bytes.
+    """
+
+    if not series_dict:
+        raise ValueError("series_dict is empty—nothing to plot")
+
+    plt.figure(figsize=(12, 7))
+    cmap = plt.cm.get_cmap("tab10")
+    color_cycle = [cmap(i) for i in range(cmap.N)]  # list of RGBA tuples
+
+    for idx, (label, values) in enumerate(series_dict.items()):
+        if not values:
+            continue
+        plt.plot(
+            range(len(values)),
+            values,
+            marker="o",
+            linestyle="-",
+            color=color_cycle[idx % len(color_cycle)],
+            label=label,
+        )
+
+    plt.title(f"{title_prefix}{metric} over time", fontsize=16)
+    plt.xlabel("Measurement Index", fontsize=14)
+    plt.ylabel(metric, fontsize=14)
+    plt.grid(True, linestyle="--", alpha=0.7)
+    plt.legend()
+    plt.tight_layout()
+
+    buf = io.BytesIO()
+    plt.savefig(buf, format="png")
+    plt.close()
+    buf.seek(0)
+    return base64.b64encode(buf.read())
     
