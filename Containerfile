@@ -21,7 +21,7 @@ ENV PATH="~/bin:$PATH"
 ADD . orion-mcp/
 WORKDIR orion-mcp
 
-RUN git clone --depth 1 --branch v0.0.17 http://github.com/cloud-bulldozer/orion
+RUN git clone --depth 1 --branch v0.0.22 http://github.com/cloud-bulldozer/orion
 
 RUN pip install -r requirements.txt
 
