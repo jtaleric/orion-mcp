@@ -22,7 +22,8 @@ from utils.utils import (
     orion_metrics,
     orion_configs,
     generate_correlation_plot,
-    generate_multi_line_plot
+    generate_multi_line_plot,
+    list_orion_configs
 )
 
 mcp = FastMCP(name="orion-mcp",
@@ -31,15 +32,19 @@ mcp = FastMCP(name="orion-mcp",
               log_level='INFO')
 
 ORION_CONFIGS_PATH = "/orion/examples/"
-ORION_CONFIGS = [
+_configs=list_orion_configs()
+if _configs == []:
+    ORION_CONFIGS = [
     "metal-perfscale-cpt-virt-udn-density.yaml",
     "trt-external-payload-cluster-density.yaml",
     "trt-external-payload-node-density.yaml",
     "trt-external-payload-node-density-cni.yaml",
     "trt-external-payload-crd-scale.yaml",
     "small-scale-udn-l3.yaml",
-    "med-scale-udn-l3.yaml",
-]
+    "med-scale-udn-l3.yaml",]
+else:
+    ORION_CONFIGS = _configs
+
 FULL_ORION_CONFIG_PATHS = [os.path.join(ORION_CONFIGS_PATH, config) for config in ORION_CONFIGS]
 
 @mcp.resource("orion-mcp://get_data_source")

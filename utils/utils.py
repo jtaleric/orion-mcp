@@ -17,6 +17,9 @@ from typing import Optional
 import matplotlib.pyplot as plt
 import numpy as np
 
+# Define ORION_CONFIGS_PATH locally to avoid circular import
+ORION_CONFIGS_PATH = "/orion/examples/"
+
 
 async def run_command_async(command: list[str] | str, env: Optional[dict] = None, shell: bool = False) -> subprocess.CompletedProcess:
     """
@@ -104,7 +107,6 @@ async def run_orion(
             "--env-host",
             "orion",
             "orion",
-            "cmd",
             "--lookback", f"{lookback}d",
             "--hunter-analyze",
             "--config", config,
@@ -114,7 +116,6 @@ async def run_orion(
         print("Using orion from path")
         command = [
             "orion",
-            "cmd",
             "--lookback", f"{lookback}d",
             "--hunter-analyze",
             "--config", config,
@@ -243,6 +244,12 @@ def compute_correlation(values1: list[float], values2: list[float]) -> float:
     # Use NumPy for a robust computation
     return float(np.corrcoef(values1, values2)[0, 1])
 
+
+def list_orion_configs() -> list[str]:
+    """
+    List the Orion configuration files in the orion/examples directory.
+    """
+    return os.listdir(ORION_CONFIGS_PATH)
 
 def generate_correlation_plot(
     values1: list[float],
