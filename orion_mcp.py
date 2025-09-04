@@ -193,9 +193,17 @@ async def has_openshift_regressed(
                        If no regressions are found, returns "No regressions found".
     """
 
+    configs=[
+            "trt-external-payload-cluster-density.yaml",
+            "trt-external-payload-node-density.yaml",
+            "trt-external-payload-node-density-cni.yaml",
+            "trt-external-payload-crd-scale.yaml",
+    ]
+    full_config_paths = [os.path.join(ORION_CONFIGS_PATH, config) for config in configs]
+
     changepoints = []
 
-    for full_config_path in FULL_ORION_CONFIG_PATHS:
+    for full_config_path in full_config_paths:
         # Execute the command as a subprocess
         result = await run_orion(
             lookback=lookback,
