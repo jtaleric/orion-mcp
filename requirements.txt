@@ -14,7 +14,7 @@ elasticsearch==7.13.0
 elasticsearch-dsl==7.4.1
 expandvars==0.6.5
 fastapi==0.110.0
-fmatch==0.1.2
+fmatch==0.1.6
 fonttools==4.58.4
 h11==0.16.0
 httpcore==1.0.9
