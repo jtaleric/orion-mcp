@@ -121,11 +121,19 @@ async def run_orion(
             "--config", config,
             "-o", "json"
         ]
+
+    es_metadata_index = os.environ.get("es_metadata_index")
+    if es_metadata_index == "" :
+        es_metadata_index = "perf_scale_ci*"
+    es_benchmark_index = os.environ.get("es_benchmark_index")
+    if es_benchmark_index == "" :
+        es_benchmark_index = "ripsaw-kube-burner-*"
+
     env = {
         "ES_SERVER": data_source,
         "version": version,
-        "es_metadata_index": "perf_scale_ci*",
-        "es_benchmark_index": "ripsaw-kube-burner-*"
+        "es_metadata_index": es_metadata_index,
+        "es_benchmark_index": es_benchmark_index
     }
     result = await run_command_async(command, env=env)
     # Log the full result for debugging
