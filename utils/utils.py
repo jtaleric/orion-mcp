@@ -20,7 +20,6 @@ import numpy as np
 # Define ORION_CONFIGS_PATH locally to avoid circular import
 ORION_CONFIGS_PATH = "/orion/examples/"
 
-
 async def run_command_async(command: list[str] | str, env: Optional[dict] = None, shell: bool = False) -> subprocess.CompletedProcess:
     """
     Run a command line tool asynchronously and return a CompletedProcess-like result.
@@ -123,9 +122,13 @@ async def run_orion(
         ]
 
     es_metadata_index = os.environ.get("es_metadata_index")
+    if es_metadata_index is None or es_metadata_index == "":
+        es_metadata_index = os.environ.get("ES_METADATA_INDEX")
     if es_metadata_index == "" :
         es_metadata_index = "perf_scale_ci*"
     es_benchmark_index = os.environ.get("es_benchmark_index")
+    if es_benchmark_index is None or es_benchmark_index == "":
+        es_benchmark_index = os.environ.get("ES_BENCHMARK_INDEX")
     if es_benchmark_index == "" :
         es_benchmark_index = "ripsaw-kube-burner-*"
 
