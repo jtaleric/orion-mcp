@@ -260,7 +260,11 @@ def list_orion_configs() -> list[str]:
     """
     List the Orion configuration files in the orion/examples directory.
     """
-    return os.listdir(ORION_CONFIGS_PATH)
+    try:
+        return os.listdir(ORION_CONFIGS_PATH)
+    except (FileNotFoundError, OSError):
+        # Return empty list if directory doesn't exist
+        return []
 
 def generate_correlation_plot(
     values1: list[float],
