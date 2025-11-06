@@ -139,15 +139,16 @@ ORION_DEBUG=true
 
 ### OpenSearch Authentication
 
-#### Basic Authentication
+The server uses the `ES_SERVER` environment variable to connect to OpenSearch/Elasticsearch. You can include authentication credentials in the URL:
+
 ```bash
 export ES_SERVER="https://username:password@opensearch:9200"
 ```
 
-#### API Key Authentication
+Or use a URL without credentials if your OpenSearch instance doesn't require authentication:
+
 ```bash
 export ES_SERVER="https://opensearch:9200"
-export ES_API_KEY="your-api-key"
 ```
 
 ## 🧪 Verification
@@ -275,10 +276,9 @@ podman run --name orion-mcp \
 After successful installation:
 
 1. **[Quick Start Guide](quickstart.md)** - Run your first analysis
-2. **[Configuration Guide](configuration.md)** - Customize your setup
-3. **[API Reference](api/README.md)** - Explore available tools
-4. **[Examples](examples/README.md)** - See real-world usage patterns
+2. **[API Reference](api/README.md)** - Explore available tools
+3. **[Features Guide](features/README.md)** - Complete features documentation
 
 ---
 
-**Need Help?** Check our [Development Guide](development/README.md) or file an issue on GitHub.
+**Need Help?** File an issue on GitHub or check the [main documentation](README.md).

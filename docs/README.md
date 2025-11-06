@@ -7,12 +7,9 @@ Welcome to the Orion MCP documentation! This directory contains comprehensive gu
 ### Getting Started
 - **[Installation Guide](installation.md)** - Setup and installation instructions
 - **[Quick Start](quickstart.md)** - Get up and running in minutes
-- **[Configuration](configuration.md)** - Server and environment configuration
 
 ### API Reference
 - **[API Overview](api/README.md)** - Complete API documentation
-- **[Tools Reference](api/tools.md)** - All available MCP tools
-- **[Resources Reference](api/resources.md)** - Available MCP resources
 
 ### Features
 - **[Features Overview](features/README.md)** - Complete features documentation including PR analysis, regression detection, and performance metrics
@@ -23,10 +20,8 @@ Welcome to the Orion MCP documentation! This directory contains comprehensive gu
 |--------------|----------|
 | **Get started quickly** | [Quick Start](quickstart.md) |
 | **Analyze a Pull Request** | [Features Guide](features/README.md) |
-| **Deploy in production** | [Production Setup](deployment/production.md) |
-| **Integrate with CI/CD** | [Integration Examples](examples/integrations.md) |
-| **Use with AI/LLM** | [AI Integration](examples/ai-integration.md) |
-| **Contribute code** | [Development Guide](development/README.md) |
+| **API Documentation** | [API Reference](api/README.md) |
+| **Installation** | [Installation Guide](installation.md) |
 
 ## 🔍 Search Documentation
 
@@ -45,8 +40,6 @@ Found an error or want to improve the documentation?
 1. **File an Issue** - Report documentation bugs or suggest improvements
 2. **Submit a PR** - Contribute fixes or new content
 3. **Ask Questions** - Use GitHub Discussions for questions
-
-See our [Development Guide](development/README.md) for detailed contribution instructions.
 
 ---
 

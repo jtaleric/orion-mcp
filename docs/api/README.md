@@ -16,18 +16,18 @@ Orion MCP exposes its functionality through the Model Context Protocol (MCP), pr
 
 | Tool | Purpose | Input | Output |
 |------|---------|-------|--------|
-| [`get_orion_configs`](tools.md#get_orion_configs) | List available test configurations | None | Array of config filenames |
-| [`get_orion_metrics`](tools.md#get_orion_metrics) | Get metrics for a configuration | `config` | Metrics dictionary |
-| [`openshift_report_on`](tools.md#openshift_report_on) | Generate performance trends | `versions`, `metric`, `config` | Image (PNG/JPEG) |
-| [`openshift_report_on_pr`](tools.md#openshift_report_on_pr) | Analyze PR performance | `organization`, `repository`, `pull_request` | JSON analysis |
-| [`has_openshift_regressed`](tools.md#has_openshift_regressed) | Detect regressions | `version`, `lookback` | Text summary |
-| [`metrics_correlation`](tools.md#metrics_correlation) | Correlate two metrics | `metric1`, `metric2`, `config` | Scatter plot image |
+| `get_orion_configs` | List available test configurations | None | Array of config filenames |
+| `get_orion_metrics` | Get metrics for a configuration | `config` | Metrics dictionary |
+| `openshift_report_on` | Generate performance trends | `versions`, `metric`, `config` | Image (PNG/JPEG) |
+| `openshift_report_on_pr` | Analyze PR performance | `organization`, `repository`, `pull_request` | JSON analysis |
+| `has_openshift_regressed` | Detect regressions | `version`, `lookback` | Text summary |
+| `metrics_correlation` | Correlate two metrics | `metric1`, `metric2`, `config` | Scatter plot image |
 
 ## 📊 Resources
 
 | Resource | Purpose | Data Format |
 |----------|---------|-------------|
-| [`get_data_source`](resources.md#get_data_source) | OpenSearch endpoint URL | String |
+| `get_data_source` | OpenSearch endpoint URL | String |
 
 ## 🔗 Base URL
 
@@ -79,10 +79,9 @@ All tool requests use HTTP POST with JSON payloads sent to the appropriate tool 
 
 ## 📚 Detailed Documentation
 
-- **[Tools Reference](tools.md)** - Complete tool documentation with parameters and examples
-- **[Resources Reference](resources.md)** - Available resources and data sources
-- **[Integration Guide](../examples/integrations.md)** - CI/CD and automation examples
-- **[AI/LLM Integration](../examples/ai-integration.md)** - Using with AI systems
+- **[Features Guide](../features/README.md)** - Complete features documentation including PR analysis
+- **[Installation Guide](../installation.md)** - Setup and configuration
+- **[Quick Start](../quickstart.md)** - Getting started guide
 
 ## 🔧 Authentication
 
@@ -116,4 +115,4 @@ Currently, Orion MCP uses environment-based authentication:
 
 ---
 
-**Next**: Explore detailed [Tools Reference](tools.md) or see [Integration Examples](../examples/integrations.md)
+**Next**: Explore [Features Guide](../features/README.md) for detailed feature documentation

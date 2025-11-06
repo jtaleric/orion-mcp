@@ -74,9 +74,7 @@ If the server starts without errors and listens on port 3030, you're ready to go
 ## 📚 Learn More
 
 - **[Features Overview](features/README.md)** - Explore all available features
-- **[PR Analysis Guide](features/pr-analysis-quickstart.md)** - Deep dive into PR analysis
-- **[API Reference](api/tools.md)** - Complete API documentation
-- **[Examples](examples/README.md)** - Real-world usage examples
+- **[API Reference](api/README.md)** - Complete API documentation
 
 ## 🚨 Troubleshooting
 
