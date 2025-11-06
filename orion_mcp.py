@@ -169,6 +169,84 @@ async def openshift_report_on(
 
     return types.ImageContent(type="image", data=img_b64.decode("utf-8"), mimeType="image/jpeg")
 
+async def get_pr_details(organization: str, repository: str, pull_request: str, version: str = "4.20", lookback: str = "15") -> list[dict]:
+    """
+    Get PR performance analysis details by running Orion with input variables.
+    
+    Args:
+        organization: GitHub organization name
+        repository: Repository name  
+        pull_request: Pull request number
+        version: OpenShift version to analyze
+        lookback: Days to look back for data
+        
+    Returns:
+        List of dictionaries containing PR analysis results for each config. 
+        Each dictionary contains the config, periodic_avg, and pull.
+        periodic_avg is the average of the periodic metrics for the version.
+        pull contains the results from running performance tests aginst the pull request.
+        The LLM should compare the periodic_avg to the pull metrics and determine if the PR introduces a performance regression. 
+        The LLM should use a 10% threshold to determine if the PR introduces a performance regression.
+    """
+
+    configs = [
+        "trt-external-payload-cluster-density.yaml",
+        "trt-external-payload-node-density.yaml",
+        "trt-external-payload-node-density-cni.yaml",
+        "trt-external-payload-crd-scale.yaml",
+    ]
+
+    input_vars = {"jobtype": "pull",
+            "organization": organization,
+            "repository": repository,
+            "pull_number": pull_request,
+            "version": version}
+            
+    full_config_paths = [os.path.join(ORION_CONFIGS_PATH, config) for config in configs]
+    summaries: list[dict] = []
+    for full_config_path in full_config_paths:
+        result = await run_orion(
+            lookback=lookback,
+            config=full_config_path,
+            data_source=get_data_source(),
+            version=version,
+            input_vars=input_vars
+        )
+        data=json.loads(result.stdout)
+        summaries.append({
+            "config": full_config_path,
+            "periodic_avg": data["periodic_avg"],
+            "pull": data["pull"]
+        })
+    return summaries
+
+@mcp.tool()
+async def openshift_report_on_pr(
+    version: Annotated[str, Field(description="OpenShift version to analyze")] = "4.20",
+    lookback: Annotated[str, Field(description="Number of days to lookback")] = "15",
+    organization: Annotated[str, Field(description="Organization to look into")] = "openshift",
+    repository: Annotated[str, Field(description="Repository to look into")] = "ovn-kubernetes",
+    pull_request: Annotated[str, Field(description="PR to look into")] = "2841",
+) -> dict:
+    """
+    Captures a performance analysis against the specified OpenShift version using Orion.
+
+    Args:
+        version: OpenShift version to analyze.
+        lookback: The number of days to look back for performance data. Defaults to 15 days.
+        organization: The organization to look into. Defaults to openshift.
+        repository: The repository to look into. Defaults to ovn-kubernetes.
+        pull_request: The PR to look into. Defaults to 2841.
+
+    Returns:
+        List of dictionaries containing PR analysis results for each version.
+    """
+    # Get the PR details
+    summaries = await get_pr_details(organization, repository, pull_request, version, lookback)
+    return {
+        "summaries": summaries
+    }
+
 
 def _extract_regression_details(stdout: str) -> list[dict]:
     """Extract regression details (uuid, ocpVersion, previous ocpVersion, PR diffs, metrics)."""

@@ -100,6 +100,7 @@ async def run_orion(
     config: str,
     data_source: str,
     version: str,
+    input_vars: Optional[dict] = None,
 ) -> subprocess.CompletedProcess:
     """
     Execute Orion to analyze performance data for regressions.
@@ -138,6 +139,9 @@ async def run_orion(
             "--config", config,
             "-o", "json"
         ]
+    if input_vars is not None:
+        command.append("--input-vars")
+        command.append(f"{json.dumps(input_vars)}")
 
     es_metadata_index = resolve_env_var(
         "es_metadata_index",
@@ -156,6 +160,8 @@ async def run_orion(
         "es_metadata_index": es_metadata_index,
         "es_benchmark_index": es_benchmark_index
     }
+
+    print(f"Env: {env}")
     result = await run_command_async(command, env=env)
     # Log the full result for debugging
     print(f"Orion return code: {result.returncode}")

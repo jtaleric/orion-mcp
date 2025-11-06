@@ -23,7 +23,7 @@ ENV PATH="~/bin:$PATH"
 RUN mkdir -p /app/orion /app/orion-mcp
 
 # Clone Orion repository
-RUN git clone --depth 1 --branch v0.1.3 http://github.com/cloud-bulldozer/orion /app/orion-repo
+RUN git clone --depth 1 --branch v0.1.5 http://github.com/cloud-bulldozer/orion /app/orion-repo
 
 # Create virtual environment for Orion
 RUN python -m venv /app/orion-venv
