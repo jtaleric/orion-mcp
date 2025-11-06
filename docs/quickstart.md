@@ -95,8 +95,4 @@ If the server starts without errors and listens on port 3030, you're ready to go
 - Check firewall settings
 - Verify container networking (if using containers)
 
-Need more help? Check our [Development Guide](development/README.md) or file an issue on GitHub.
-
 ---
-
-**Ready to analyze performance?** Jump to [PR Analysis](features/pr-analysis-quickstart.md) or explore [all features](features/README.md).

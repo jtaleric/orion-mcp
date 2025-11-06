@@ -221,9 +221,6 @@ sudo netstat -tulpn | grep 3030
 
 # Kill process
 sudo kill -9 <PID>
-
-# Or use different port
-python orion_mcp.py --port 3031
 ```
 
 ### Debug Mode
