@@ -214,7 +214,7 @@ async def get_pr_details(organization: str, repository: str, pull_request: str, 
         )
         data=json.loads(result.stdout)
         if "periodic_avg" not in data or "pull" not in data:
-            return types.TextContent(type="text", text=f"Having issues finding PR data, please ensure the version the PR was tested on is correct and the PR was tested against the correct version of OpenShift.")
+            return types.TextContent(type="text", text="Having issues finding PR data, please ensure the version the PR was tested on is correct and the PR was tested against the correct version of OpenShift.")
         summaries.append({
             "config": full_config_path,
             "periodic_avg": data["periodic_avg"],
