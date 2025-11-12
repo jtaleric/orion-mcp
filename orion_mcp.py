@@ -215,10 +215,41 @@ async def get_pr_details(organization: str, repository: str, pull_request: str, 
         data=json.loads(result.stdout)
         if "periodic_avg" not in data or "pull" not in data:
             return types.TextContent(type="text", text="Having issues finding PR data, please ensure the version the PR was tested on is correct and the PR was tested against the correct version of OpenShift.")
+                
+        # Calculate percentage_change for each metric in pull section
+        pull_data = data["pull"]
+        periodic_avg = data["periodic_avg"]
+        
+        # Iterate through each pull entry and calculate percentage_change for its metrics
+        for pull_entry in pull_data:
+            if "metrics" in pull_entry:
+                for metric_name, metric_data in pull_entry["metrics"].items():
+                    # Find corresponding metric in periodic_avg
+                    if metric_name in periodic_avg:
+                        # periodic_avg values might be numbers or dicts with "value" key
+                        periodic_data = periodic_avg[metric_name]
+                        if isinstance(periodic_data, dict):
+                            periodic_value = periodic_data.get("value", 0)
+                        else:
+                            periodic_value = periodic_data
+                        
+                        pull_value = metric_data.get("value", 0)
+                        
+                        # Calculate percentage change: ((pull - periodic) / periodic) * 100
+                        if periodic_value != 0 and pull_value is not None and periodic_value is not None:
+                            percentage_change = ((pull_value - periodic_value) / periodic_value) * 100
+                            metric_data["percentage_change"] = percentage_change
+                        else:
+                            # If periodic value is 0, we can't calculate a meaningful percentage
+                            metric_data["percentage_change"] = 0
+                    else:
+                        # Metric not found in periodic_avg
+                        metric_data["percentage_change"] = 0
+        
         summaries.append({
             "config": full_config_path,
-            "periodic_avg": data["periodic_avg"],
-            "pull": data["pull"]
+            "periodic_avg": periodic_avg,
+            "pull": pull_data
         })
     return summaries
 
