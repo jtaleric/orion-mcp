@@ -38,17 +38,20 @@ RUN /app/orion-venv/bin/pip install --upgrade pip setuptools && \
 # Create symlink for orion command
 RUN ln -sf /app/orion-venv/bin/orion /usr/local/bin/orion
 
-# Copy orion-mcp source code
-ADD . /app/orion-mcp/
-
 # Create virtual environment for orion-mcp
 RUN python -m venv /app/orion-mcp-venv
 ENV ORION_MCP_VENV="/app/orion-mcp-venv"
+
+# Copy only requirements.txt first to leverage layers cache
+COPY requirements.txt /app/orion-mcp/requirements.txt
 
 # Install orion-mcp dependencies in its virtual environment
 WORKDIR /app/orion-mcp
 RUN /app/orion-mcp-venv/bin/pip install --upgrade pip && \
     /app/orion-mcp-venv/bin/pip install -r requirements.txt
+
+# Copy orion-mcp source code
+COPY . /app/orion-mcp/
 
 # Create /orion/examples directory and copy examples from the cloned orion repo
 RUN mkdir -p /orion && cp -r /app/orion-repo/examples /orion/examples
