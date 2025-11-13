@@ -196,14 +196,17 @@ async def get_pr_details(organization: str, repository: str, pull_request: str, 
         "trt-external-payload-crd-scale.yaml",
     ]
 
-    input_vars = {"jobtype": "pull",
-            "organization": organization,
-            "repository": repository,
-            "pull_number": pull_request,
-            "version": version}
+    input_vars = {
+        "jobtype": "pull",
+        "organization": organization,
+        "repository": repository,
+        "pull_number": pull_request,
+        "version": version
+    }
             
     full_config_paths = [os.path.join(ORION_CONFIGS_PATH, config) for config in configs]
     summaries: list[dict] = []
+    
     for full_config_path in full_config_paths:
         result = await run_orion(
             lookback=lookback,
@@ -212,45 +215,48 @@ async def get_pr_details(organization: str, repository: str, pull_request: str, 
             version=version,
             input_vars=input_vars
         )
-        data=json.loads(result.stdout)
+        data = json.loads(result.stdout)
+        
         if "periodic_avg" not in data or "pull" not in data:
-            return types.TextContent(type="text", text="Having issues finding PR data, please ensure the version the PR was tested on is correct and the PR was tested against the correct version of OpenShift.")
+            return types.TextContent(
+                type="text", 
+                text="Having issues finding PR data, please ensure the version the PR was tested on is correct and the PR was tested against the correct version of OpenShift."
+            )
                 
-        # Calculate percentage_change for each metric in pull section
         pull_data = data["pull"]
         periodic_avg = data["periodic_avg"]
         
-        # Iterate through each pull entry and calculate percentage_change for its metrics
+        # Add percentage changes to all metrics in pull data
         for pull_entry in pull_data:
-            if "metrics" in pull_entry:
-                for metric_name, metric_data in pull_entry["metrics"].items():
-                    # Find corresponding metric in periodic_avg
-                    if metric_name in periodic_avg:
-                        # periodic_avg values might be numbers or dicts with "value" key
-                        periodic_data = periodic_avg[metric_name]
-                        if isinstance(periodic_data, dict):
-                            periodic_value = periodic_data.get("value", 0)
-                        else:
-                            periodic_value = periodic_data
-                        
-                        pull_value = metric_data.get("value", 0)
-                        
-                        # Calculate percentage change: ((pull - periodic) / periodic) * 100
-                        if periodic_value != 0 and pull_value is not None and periodic_value is not None:
-                            percentage_change = ((pull_value - periodic_value) / periodic_value) * 100
-                            metric_data["percentage_change"] = percentage_change
-                        else:
-                            # If periodic value is 0, we can't calculate a meaningful percentage
-                            metric_data["percentage_change"] = 0
+            if "metrics" not in pull_entry:
+                continue
+                
+            for metric_name, metric_data in pull_entry["metrics"].items():
+                # Extract periodic value
+                if metric_name not in periodic_avg:
+                    periodic_value = 0
+                else:
+                    periodic_data = periodic_avg[metric_name]
+                    if isinstance(periodic_data, dict):
+                        periodic_value = periodic_data.get("value", 0)
                     else:
-                        # Metric not found in periodic_avg
-                        metric_data["percentage_change"] = 0
+                        periodic_value = periodic_data
+                
+                # Calculate percentage change
+                pull_value = metric_data.get("value", 0)
+                if periodic_value != 0 and pull_value is not None and periodic_value is not None:
+                    percentage_change = ((pull_value - periodic_value) / periodic_value) * 100
+                else:
+                    percentage_change = 0
+                
+                metric_data["percentage_change"] = percentage_change
         
         summaries.append({
             "config": full_config_path,
             "periodic_avg": periodic_avg,
             "pull": pull_data
         })
+    
     return summaries
 
 @mcp.tool()
