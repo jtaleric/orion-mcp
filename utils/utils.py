@@ -9,6 +9,7 @@ import asyncio
 import base64
 import io
 import json
+import logging
 import os
 import re
 import shutil
@@ -17,6 +18,8 @@ from contextvars import ContextVar
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Optional
+
+import httpx
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -379,14 +382,35 @@ def compute_correlation(values1: list[float], values2: list[float]) -> float:
     return float(np.corrcoef(values1, values2)[0, 1])
 
 
+GITHUB_CONFIGS_URL = "https://api.github.com/repos/cloud-bulldozer/orion/contents/examples"
+
+logger = logging.getLogger(__name__)
+
+
 def list_orion_configs() -> list[str]:
     """
-    List the Orion configuration files in the orion/examples directory.
+    List the Orion configuration files.
+
+    Tries in order:
+    1. GitHub API (cloud-bulldozer/orion examples directory)
+    2. Local /orion/examples/ directory
     """
     try:
-        return os.listdir(ORION_CONFIGS_PATH)
+        resp = httpx.get(GITHUB_CONFIGS_URL, timeout=10)
+        resp.raise_for_status()
+        configs = [
+            item["name"]
+            for item in resp.json()
+            if item["type"] == "file" and item["name"].endswith(".yaml")
+        ]
+        if configs:
+            return configs
+    except Exception as e:
+        logger.warning("Failed to fetch configs from GitHub: %s", e)
+
+    try:
+        return [f for f in os.listdir(ORION_CONFIGS_PATH) if f.endswith(".yaml")]
     except (FileNotFoundError, OSError):
-        # Return empty list if directory doesn't exist
         return []
 
 def generate_correlation_plot(
@@ -449,7 +473,7 @@ def generate_multi_line_plot(
         raise ValueError("series_dict is empty—nothing to plot")
 
     plt.figure(figsize=(12, 7))
-    cmap = plt.cm.get_cmap("tab10")
+    cmap = plt.colormaps["tab10"]
     color_cycle = [cmap(i) for i in range(cmap.N)]  # list of RGBA tuples
 
     for idx, (label, values) in enumerate(series_dict.items()):

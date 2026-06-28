@@ -73,6 +73,9 @@ logs/
 .tmp/
 .temp/
 
+# Deployment manifests (not needed at runtime)
+kustomize/
+
 # Misc files
 .github/
 openshift-deployment.yml
