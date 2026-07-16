@@ -4,6 +4,8 @@ on:
   workflow_dispatch:
   release:
     types: [published]
+  repository_dispatch:
+    types: [orion-release]
 
 jobs:
   image-push:
@@ -22,6 +24,8 @@ jobs:
           tags: latest ${{ github.sha }}
           containerfiles: |
             ./Containerfile
+          build-args: |
+            ORION_RELEASE_TAG=${{ github.event.client_payload.tag || '' }}
 
       - name: Push Orion MCP Image
         uses: redhat-actions/push-to-registry@v2
