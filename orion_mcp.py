@@ -456,6 +456,7 @@ async def get_pr_details(
         "trt-external-payload-node-density.yaml",
         "trt-external-payload-node-density-cni.yaml",
         "trt-external-payload-crd-scale.yaml",
+        "trt-external-payload-udn-density-pods.yaml",
     ]
 
     if not pull_requests:
@@ -683,6 +684,7 @@ async def has_openshift_regressed(
         "trt-external-payload-node-density.yaml",
         "trt-external-payload-node-density-cni.yaml",
         "trt-external-payload-crd-scale.yaml",
+        "trt-external-payload-udn-density-pods.yaml",
     ]
     return await _run_regression_checks(configs, version=version, lookback=lookback)
 
@@ -834,6 +836,7 @@ async def has_nightly_regressed(
         "trt-external-payload-node-density.yaml",
         "trt-external-payload-node-density-cni.yaml",
         "trt-external-payload-crd-scale.yaml",
+        "trt-external-payload-udn-density-pods.yaml",
     ])
 
     all_regressions: list[str] = []
